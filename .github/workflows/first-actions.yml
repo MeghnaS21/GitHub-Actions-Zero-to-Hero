@@ -3,7 +3,7 @@ name: My First GitHub Actions
 on: [push]
 
 jobs:
-  build:
+  test-logic:
     runs-on: ${{ matrix.os-platforms}}
 
     strategy:
@@ -37,3 +37,18 @@ jobs:
         SLACK_COLOR: '#ff0000'
         SLACK_MESSAGE: "CI Pipeline Failed on ${{ matrix.os-platforms }} for Python ${{ matrix.python-version }}! ❌"
         SLACK_TITLE: "Build Failure Alert"
+
+
+# CD Part of this pipeline
+  build-and-push:
+    needs: test-logic # <--- This is the "Magic" bridge to CD
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build Docker Image
+        # We tag it with the 'sha' (unique commit ID) for versioning
+        run: docker build -t my-python-app:${{ github.sha }} .
+
+      - name: Log Image Status
+        run: echo "Image successfully built and ready for registry!"
