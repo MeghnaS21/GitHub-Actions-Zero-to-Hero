@@ -6,8 +6,8 @@ WORKDIR /app
 
 # 3. Copy your requirements file and install dependencies
 # Note: If you don't have a requirements.txt, you can skip this for now
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt || true
+# COPY requirements.txt .
+# RUN pip install --no-cache-dir -r requirements.txt || true
 
 # 4. Copy your source code into the container
 COPY src/ .
