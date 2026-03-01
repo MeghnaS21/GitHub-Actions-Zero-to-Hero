@@ -27,3 +27,13 @@ jobs:
       run: |
         cd src
         python -m pytest addition.py
+
+
+    - name: Notify Slack on Failure
+      if: failure()  # This ensures the step ONLY runs if a previous step failed
+      uses: rtCamp/action-slack-notify@v2
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        SLACK_COLOR: '#ff0000'
+        SLACK_MESSAGE: "CI Pipeline Failed on ${{ matrix.os-platforms }} for Python ${{ matrix.python-version }}! ❌"
+        SLACK_TITLE: "Build Failure Alert"
