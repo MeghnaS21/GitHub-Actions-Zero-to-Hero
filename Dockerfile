@@ -1,26 +1,23 @@
-# STAGE 1 BUILDER
-# Start with a Python base image
+# STAGE 1: The Kitchen (Builder)
 FROM python:3.9-slim AS builder
-
-# 2. Set the working directory inside the container
 WORKDIR /app
 
-# STAGE 2: Final Image (The "Slim" one)
+# We create the folder manually so it ALWAYS exists
+RUN mkdir -p /install
+
+# We check if requirements.txt exists. If not, we create an empty one.
+COPY . .
+RUN if [ ! -f requirements.txt ]; then touch requirements.txt; fi
+
+# Install into our temporary folder
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# STAGE 2: The Delivery Box (Final)
 FROM python:3.9-slim
 WORKDIR /app
 
-# Only copy the installed packages from the builder stage
-
+# We copy from the builder's temporary folder to the system folder
 COPY --from=builder /install /usr/local
 COPY src/ .
 
-# 3. Copy your requirements file and install dependencies
-# Note: If you don't have a requirements.txt, you can skip this for now
-# COPY requirements.txt .
-# RUN pip install --no-cache-dir -r requirements.txt || true
-
-# 4. Copy your source code into the container
-COPY src/ .
-
-# 5. Tell the container what to do when it starts
 CMD ["python", "addition.py"]
