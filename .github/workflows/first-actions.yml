@@ -39,14 +39,27 @@ jobs:
         python -m pytest addition.py
 
 
-    - name: Notify Slack on Failure
-      if: failure()  # This ensures the step ONLY runs if a previous step failed
+    # - name: Notify Slack on Failure
+    #  if: failure()  # This ensures the step ONLY runs if a previous step failed
+    #  uses: rtCamp/action-slack-notify@v2
+    #  env:
+    #    SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+    #    SLACK_COLOR: '#ff0000'
+    #    SLACK_MESSAGE: "CI Pipeline Failed on ${{ matrix.os-platforms }} for Python ${{ matrix.python-version }}! ❌"
+    #    SLACK_TITLE: "Build Failure Alert"
+
+    - name: Personal Failure Alert
+      if: failure()
       uses: rtCamp/action-slack-notify@v2
       env:
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-        SLACK_COLOR: '#ff0000'
-        SLACK_MESSAGE: "CI Pipeline Failed on ${{ matrix.os-platforms }} for Python ${{ matrix.python-version }}! ❌"
-        SLACK_TITLE: "Build Failure Alert"
+        SLACK_TITLE: "Hey @${{ github.actor }}, your build failed! ❌"
+        SLACK_COLOR: '#FF0000'
+        # This <@ID> format is the only way to trigger a "Mobile Ping" in Slack
+        SLACK_MESSAGE: |
+          *Actor:* ${{ github.actor }}
+          *Branch:* ${{ github.ref_name }}
+          *Attention:* <@${{ secrets.SLACK_MEMBER_ID }}> - Please check your latest commit!
 
 
 # CD Part of this pipeline
