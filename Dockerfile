@@ -13,8 +13,8 @@ WORKDIR /app
 COPY --from=builder /root/.local /root/.local
 COPY src/ .
 
-# Ensure the local bin is in the PATH
-ENV PATH=/root/.local/bin:$PATH
+COPY --from=builder /install /usr/local
+COPY src/ .
 
 # 3. Copy your requirements file and install dependencies
 # Note: If you don't have a requirements.txt, you can skip this for now
