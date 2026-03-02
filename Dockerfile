@@ -1,8 +1,20 @@
-# 1. Start with a Python base image
+# STAGE 1 BUILDER
+# Start with a Python base image
 FROM python:3.9-slim
 
 # 2. Set the working directory inside the container
 WORKDIR /app
+
+# STAGE 2: Final Image (The "Slim" one)
+FROM python:3.9-slim
+WORKDIR /app
+
+# Only copy the installed packages from the builder stage
+COPY --from=builder /root/.local /root/.local
+COPY src/ .
+
+# Ensure the local bin is in the PATH
+ENV PATH=/root/.local/bin:$PATH
 
 # 3. Copy your requirements file and install dependencies
 # Note: If you don't have a requirements.txt, you can skip this for now
