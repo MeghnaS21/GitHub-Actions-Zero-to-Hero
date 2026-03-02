@@ -10,8 +10,6 @@ FROM python:3.9-slim
 WORKDIR /app
 
 # Only copy the installed packages from the builder stage
-COPY --from=builder /root/.local /root/.local
-COPY src/ .
 
 COPY --from=builder /install /usr/local
 COPY src/ .
