@@ -1,6 +1,6 @@
 # STAGE 1 BUILDER
 # Start with a Python base image
-FROM python:3.9-slim
+FROM python:3.9-slim AS builder
 
 # 2. Set the working directory inside the container
 WORKDIR /app
