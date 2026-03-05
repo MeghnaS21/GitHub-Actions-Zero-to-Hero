@@ -14,7 +14,7 @@ def add(a, b):
 @app.route('/')
 def home():
     result = add(10, 20)
-    return f"<h1>DevOps Project: Success!</h1><p>10 + 20 = {result}</p>"
+    return f"<h1>DevOps Project: Success! New version</h1><p>10 + 20 = {result}</p>"
     
 def test_add():
     assert add(1, 2) == 3
