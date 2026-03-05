@@ -114,3 +114,27 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
           echo "🚀 Image is now live in AWS ECR!"
+
+
+
+  deploy-to-ec2:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH into EC2 and Update Container
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_PUBLIC_IP }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # 1. Login to ECR
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 349244424997.dkr.ecr.us-east-1.amazonaws.com
+            
+            # 2. Pull the new image
+            docker pull 349244424997.dkr.ecr.us-east-1.amazonaws.com/my-python-app:latest
+            
+            # 3. Stop old and start new
+            docker stop my-app || true
+            docker rm my-app || true
+            docker run -d -p 5000:5000 --name my-app 349244424997.dkr.ecr.us-east-1.amazonaws.com/my-python-app:latest
