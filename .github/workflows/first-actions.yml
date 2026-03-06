@@ -1,6 +1,10 @@
 name: My First GitHub Actions
 
-on: [push]
+on: 
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   test-logic:
@@ -65,6 +69,8 @@ jobs:
 # CD Part of this pipeline
   build-and-push:
     needs: test-logic # <--- This is the "Magic" bridge to CD
+    # MASTER TIP: Only build the image if we are on the main branch (saves time/money)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -119,6 +125,8 @@ jobs:
 
   deploy-to-ec2:
     needs: build-and-push
+    # MASTER TIP: Only deploy to the live server if we are on the main branch
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: SSH into EC2 and Update Container
