@@ -18,23 +18,23 @@ jobs:
 
   test-logic:
 
-    runs-on: ${{ matrix.os-platforms }}
+    runs-on: ${{ matrix.os-platforms}}
+
+
 
     strategy:
 
       matrix:
 
-        os-platforms: [ubuntu-latest] # Simplified for AI testing to save credits
+        os-platforms: [ubuntu-latest, macos-latest]
 
-        python-version: [3.9]
+        python-version: [3.8, 3.9]
 
 
 
     steps:
 
     - uses: actions/checkout@v3
-
-
 
     - name: Set up Python
 
@@ -52,6 +52,10 @@ jobs:
 
         python -m pip install --upgrade pip
 
+        pip install pytest
+
+        # You MUST include flake8 here so the Runner has the tool!
+
         pip install pytest flake8 pytest-cov flask
 
 
@@ -60,7 +64,13 @@ jobs:
 
       run: |
 
+          # stop the build if there are Python syntax errors or undefined names
+
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+          # exit-zero treats all errors as warnings. 
+
+          # For your "Catch", change this to fail on errors later!
 
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
@@ -68,53 +78,37 @@ jobs:
 
     - name: Run tests
 
-      id: run_tests
-
-      # 1. NEW: Redirect output to failure.log and allow step to 'fail' gracefully
-
       run: |
 
         cd src
 
-        python -m pytest addition.py > ../failure.log 2>&1
-
-      continue-on-error: true
+        python -m pytest addition.py
 
 
 
-    - name: AI Diagnostic (Self-Healing)
 
-      # 2. NEW: This ONLY runs if 'Run tests' above failed
 
-      if: steps.run_tests.outcome == 'failure'
+    # - name: Notify Slack on Failure
 
-      env:
+    #  if: failure()  # This ensures the step ONLY runs if a previous step failed
 
-        GH_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }} # Your Fine-Grained PAT
+    #  uses: rtCamp/action-slack-notify@v2
 
-      run: |
+    #  env:
 
-        # Install the Copilot CLI
+    #    SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
 
-        npm install -g @github/copilot-cli
+    #    SLACK_COLOR: '#ff0000'
 
-        
+    #    SLACK_MESSAGE: "CI Pipeline Failed on ${{ matrix.os-platforms }} for Python ${{ matrix.python-version }}! ❌"
 
-        echo "--- 🤖 AI ROOT CAUSE ANALYSIS ---"
-
-        # We pass the failure log to Copilot for an explanation
-
-        # Note: We use the 'explain' command via the gh cli extension
-
-        gh extension install github/gh-copilot || true
-
-        gh copilot explain "The following pytest failed. Analyze the error and suggest a fix: $(cat failure.log | tail -n 20)"
+    #    SLACK_TITLE: "Build Failure Alert"
 
 
 
-    - name: Personal Failure Alert (Slack)
+    - name: Personal Failure Alert
 
-      if: steps.run_tests.outcome == 'failure'
+      if: failure()
 
       uses: rtCamp/action-slack-notify@v2
 
@@ -122,35 +116,31 @@ jobs:
 
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
 
-        SLACK_TITLE: "Hey @${{ github.actor }}, AI is analyzing your failure! 🤖"
+        SLACK_TITLE: "Hey @${{ github.actor }}, your build failed! ❌"
 
         SLACK_COLOR: '#FF0000'
 
+        # This <@ID> format is the only way to trigger a "Mobile Ping" in Slack
+
         SLACK_MESSAGE: |
 
-          *CI Pipeline Failed!* ❌
+          *Actor:* ${{ github.actor }}
 
-          *AI Diagnostic started:* Check GitHub Actions logs for the suggested fix.
+          *Branch:* ${{ github.ref_name }}
 
-          *Attention:* <@${{ secrets.SLACK_MEMBER_ID }}>
-
-
-
-    - name: Final Build Check
-
-      # 3. NEW: We manually fail the job if tests failed, so CD doesn't trigger
-
-      if: steps.run_tests.outcome == 'failure'
-
-      run: exit 1
+          *Attention:* <@${{ secrets.SLACK_MEMBER_ID }}> - Please check your latest commit!
 
 
 
-  # CD Part of this pipeline remains connected via 'needs'
+
+
+# CD Part of this pipeline
 
   build-and-push:
 
-    needs: test-logic
+    needs: test-logic # <--- This is the "Magic" bridge to CD
+
+    # MASTER TIP: Only build the image if we are on the main branch (saves time/money)
 
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
@@ -159,6 +149,54 @@ jobs:
     steps:
 
       - uses: actions/checkout@v3
+
+
+
+     # - name: Build Docker Image
+
+        # We tag it with the 'sha' (unique commit ID) for versioning
+
+       # run: docker build -t my-python-app:${{ github.sha }} .
+
+
+
+      #- name: Log Image Status
+
+       # run: echo "Image successfully built and ready for registry!"
+
+
+
+#- name: Login to Docker Hub
+
+        #uses: docker/login-action@v2
+
+      #  with:
+
+        #  username: ${{ secrets.DOCKERHUB_USERNAME }}
+
+        #  password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+
+
+      #- name: Build and Push Docker Image
+
+     #   uses: docker/build-push-action@v4
+
+       # with:
+
+     #     context: .
+
+       #   push: true
+
+          
+
+        #  tags: devopsmeghss/my-python-app:latest
+
+
+
+
+
+        # 1. NEW: Handshake with AWS instead of Docker Hub
 
       - name: Configure AWS credentials
 
@@ -170,9 +208,11 @@ jobs:
 
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-          aws-region: us-east-1
+          aws-region: us-east-1 # Make sure this matches your ECR region
 
 
+
+      # 2. NEW: Get the ECR Registry Address
 
       - name: Login to Amazon ECR
 
@@ -181,6 +221,8 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
 
 
+
+      # 3. UPDATED: Build and Push to AWS ECR
 
       - name: Build, Tag, and Push to ECR
 
@@ -192,7 +234,11 @@ jobs:
 
         run: |
 
+          # We tag it with the Full AWS URI so ECR accepts it
+
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
 
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+          echo "🚀 Image is now live in AWS ECR!"
 
