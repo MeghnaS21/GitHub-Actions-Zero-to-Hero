@@ -17,7 +17,7 @@ def home():
     return f"<h1>DevOps Project: Success! old version</h1><p>10 + 20 = {result}</p>"
     
 def test_add():
-    assert add(1, 2) == 3
+    assert add(1, 2) == 6
     assert add(1, -1) == 0
 
 # Add this to see output in your terminal
