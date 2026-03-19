@@ -44,15 +44,19 @@ jobs:
         GH_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
       run: |
-        # Install the Copilot CLI extension
+        # 1. Install the Copilot extension (using force to avoid alias conflicts)
         gh extension install github/gh-copilot --force
         
         echo "🤖 AI is diagnosing the failure..."
         
-        # Get the AI analysis
-        ANALYSIS=$(gh copilot explain "Analyze this pytest failure and suggest a fix: $(cat failure.log | tail -n 15)")
+        # 2. Capture the last 20 lines of the failure log
+        ERROR_LOG=$(cat failure.log | tail -n 20)
         
-        # Post the comment to the PR if it exists
+        # 3. Call Copilot via the GH CLI to explain the error
+        # We use 'gh copilot explain' to avoid the shell command collision
+        ANALYSIS=$(gh copilot explain "Analyze this pytest failure and suggest a fix: $ERROR_LOG")
+        
+        # 4. Post the comment to the PR if it exists
         if [ ! -z "$PR_NUMBER" ]; then
           gh pr comment $PR_NUMBER --body "### 🤖 AI Self-Healing Diagnostic
           **Status:** Test Failed ❌
@@ -70,7 +74,7 @@ jobs:
       if: steps.run_tests.outcome == 'failure'
       run: exit 1
 
-  # CD Part remains the same
+  # CD Part remains connected via 'needs'
   build-and-push:
     needs: test-logic
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
